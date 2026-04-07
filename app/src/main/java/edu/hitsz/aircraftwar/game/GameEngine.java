@@ -277,7 +277,9 @@ public class GameEngine {
             }
         }
 
-        for (AbstractProp prop : props) {
+        // Bomb pickup can spawn additional props during the same frame.
+        // Iterate over a snapshot so newly added props do not invalidate the loop.
+        for (AbstractProp prop : new ArrayList<>(props)) {
             if (prop.notValid()) {
                 continue;
             }
