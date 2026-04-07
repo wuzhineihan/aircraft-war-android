@@ -11,6 +11,7 @@
 /app/src/main/java/com/example/
 .DS_Store
 /build
+/out
 /captures
 .externalNativeBuild
 .cxx
