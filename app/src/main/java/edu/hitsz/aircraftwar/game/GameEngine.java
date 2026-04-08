@@ -107,7 +107,12 @@ public class GameEngine {
             if (enemyAircraft.notValid()) {
                 continue;
             }
-            enemyAircraft.decreaseHp(Integer.MAX_VALUE);
+            if (enemyAircraft instanceof BossEnemy) {
+                int damage = Math.max(1, enemyAircraft.getMaxHp() / 3);
+                enemyAircraft.decreaseHp(damage);
+            } else {
+                enemyAircraft.decreaseHp(Integer.MAX_VALUE);
+            }
             if (enemyAircraft.notValid()) {
                 score += enemyAircraft.getScoreValue(config);
                 props.addAll(enemyAircraft.dropProps(config, random));

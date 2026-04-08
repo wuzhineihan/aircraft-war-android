@@ -130,6 +130,10 @@ public class GameConfig {
         return 14.0f * scale;
     }
 
+    public float getHeroMoveSpeed() {
+        return Math.max(8.0f * scale, screenWidth * 0.014f);
+    }
+
     public float getEnemyBulletSpeedY() {
         return 8.5f * scale;
     }

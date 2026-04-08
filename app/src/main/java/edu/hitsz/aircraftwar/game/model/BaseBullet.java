@@ -22,7 +22,8 @@ public abstract class BaseBullet extends AbstractFlyingObject {
 
     @Override
     public void forward(GameConfig config) {
-        super.forward(config);
+        locationX += speedX;
+        locationY += speedY;
         if (locationX <= 0
                 || locationX >= config.getScreenWidth()
                 || locationY <= 0

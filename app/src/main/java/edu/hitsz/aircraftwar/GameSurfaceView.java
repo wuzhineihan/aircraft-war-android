@@ -33,6 +33,7 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
     private static final long FRAME_DELAY_MS = 16L;
     private static final long BOMB_FLASH_DURATION_MS = 220L;
     private static final long GAME_OVER_FLASH_DURATION_MS = 520L;
+    private static final float JOYSTICK_DEAD_ZONE = 0.08f;
 
     private final SurfaceHolder surfaceHolder;
     private final Object gameStateLock = new Object();
@@ -44,6 +45,10 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
     private final Paint barTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint barFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint barTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint joystickBasePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint joystickActivePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint joystickKnobPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint joystickStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint overlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint overlayTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint overlaySubTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -69,6 +74,14 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
 
     private int screenWidth = 1;
     private int screenHeight = 1;
+    private float joystickCenterX;
+    private float joystickCenterY;
+    private float joystickBaseRadius;
+    private float joystickKnobRadius;
+    private float joystickHandleX;
+    private float joystickHandleY;
+    private float joystickInputX;
+    private float joystickInputY;
     private float backgroundOffsetY;
     private long lastFrameTimeMs;
     private long flashStartTimeMs = -1L;
@@ -78,6 +91,8 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
     private boolean gameOverNotified;
     private boolean bgmSynced;
     private boolean bossMusicActive;
+    private boolean joystickActive;
+    private int joystickPointerId = MotionEvent.INVALID_POINTER_ID;
     private long gameOverNotifyAtMs;
 
     private SpriteStore spriteStore;
@@ -129,6 +144,13 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
         barTextPaint.setTextSize(sp(11f));
         barTextPaint.setFakeBoldText(true);
 
+        joystickBasePaint.setColor(0x40324958);
+        joystickActivePaint.setColor(0x5A426C88);
+        joystickKnobPaint.setColor(ContextCompat.getColor(context, R.color.primary));
+        joystickStrokePaint.setColor(strokeColor);
+        joystickStrokePaint.setStyle(Paint.Style.STROKE);
+        joystickStrokePaint.setStrokeWidth(dp(1.4f));
+
         overlayPaint.setColor(0x99101821);
         overlayTextPaint.setColor(textPrimaryColor);
         overlayTextPaint.setTextAlign(Paint.Align.CENTER);
@@ -163,6 +185,7 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
             gameOverNotified = false;
             bgmSynced = false;
             bossMusicActive = false;
+            initJoystick();
         }
         startLoop();
     }
@@ -184,11 +207,19 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
 
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    handleJoystickPress(event);
+                    return true;
                 case MotionEvent.ACTION_MOVE:
-                    gameEngine.moveHeroTo(event.getX(), event.getY());
+                    updateJoystickFromEvent(event);
+                    return true;
+                case MotionEvent.ACTION_POINTER_UP:
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    handleJoystickRelease(event);
                     return true;
                 default:
-                    return super.onTouchEvent(event);
+                    return true;
             }
         }
     }
@@ -206,6 +237,9 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
 
             synchronized (gameStateLock) {
                 if (gameEngine != null) {
+                    if (!gameEngine.isGameOver()) {
+                        applyJoystickMovement(deltaMs);
+                    }
                     gameEngine.update(deltaMs);
                     for (SoundEffect soundEffect : gameEngine.drainSoundEffects()) {
                         handleSoundEffect(soundEffect, now);
@@ -242,6 +276,9 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
     }
 
     public void onHostPause() {
+        synchronized (gameStateLock) {
+            resetJoystick();
+        }
         stopLoop();
     }
 
@@ -268,6 +305,7 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
             return;
         }
         gameOverSequenceStarted = true;
+        resetJoystick();
         gameOverNotifyAtMs = now + GAME_OVER_FLASH_DURATION_MS;
         triggerFlash(255, GAME_OVER_FLASH_DURATION_MS, now);
     }
@@ -308,6 +346,7 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
                 drawObjectList(canvas, gameEngine.getEnemyAircrafts());
                 drawObject(canvas, gameEngine.getHeroAircraft());
                 drawHud(canvas);
+                drawJoystick(canvas);
                 if (gameEngine.isGameOver()) {
                     drawGameOverBackdrop(canvas);
                 }
@@ -385,6 +424,17 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
                 gameEngine.getHeroAircraft().getHp() + " / " + gameEngine.getHeroAircraft().getMaxHp());
     }
 
+    private void drawJoystick(Canvas canvas) {
+        canvas.drawCircle(
+                joystickCenterX,
+                joystickCenterY,
+                joystickBaseRadius,
+                joystickActive ? joystickActivePaint : joystickBasePaint);
+        canvas.drawCircle(joystickCenterX, joystickCenterY, joystickBaseRadius, joystickStrokePaint);
+        canvas.drawCircle(joystickHandleX, joystickHandleY, joystickKnobRadius, joystickKnobPaint);
+        canvas.drawCircle(joystickHandleX, joystickHandleY, joystickKnobRadius, joystickStrokePaint);
+    }
+
     private void drawProgressBar(Canvas canvas, RectF rect, int currentValue, int maxValue, String text) {
         canvas.drawRoundRect(rect, dp(12f), dp(12f), barTrackPaint);
         if (maxValue > 0 && currentValue > 0) {
@@ -414,8 +464,14 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
         drawPanel(canvas, primaryRect, dp(28f));
 
         float titleY = top + dp(44f);
+        /*
         canvas.drawText("作战结束", screenWidth * 0.5f, titleY, overlayTextPaint);
         canvas.drawText("战报生成中", screenWidth * 0.5f, titleY + dp(30f), overlaySubTextPaint);
+    }
+
+        */
+        canvas.drawText("\u4f5c\u6218\u7ed3\u675f", screenWidth * 0.5f, titleY, overlayTextPaint);
+        canvas.drawText("\u6218\u62a5\u751f\u6210\u4e2d", screenWidth * 0.5f, titleY + dp(30f), overlaySubTextPaint);
     }
 
     private void drawFlashOverlay(Canvas canvas, long now) {
@@ -448,6 +504,111 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
 
     private float centeredTextY(RectF rect, Paint paint) {
         return rect.centerY() - (paint.ascent() + paint.descent()) * 0.5f;
+    }
+
+    private void initJoystick() {
+        joystickBaseRadius = Math.min(screenWidth, screenHeight) * 0.08f;
+        joystickKnobRadius = joystickBaseRadius * 0.42f;
+        joystickCenterX = screenWidth * 0.5f;
+        joystickCenterY = screenHeight - joystickBaseRadius - screenHeight * 0.03f;
+        resetJoystick();
+    }
+
+    private void handleJoystickPress(MotionEvent event) {
+        int actionIndex = event.getActionIndex();
+        float touchX = event.getX(actionIndex);
+        float touchY = event.getY(actionIndex);
+        if (joystickActive || !isWithinJoystickZone(touchX, touchY)) {
+            return;
+        }
+        joystickActive = true;
+        joystickPointerId = event.getPointerId(actionIndex);
+        updateJoystick(touchX, touchY);
+    }
+
+    private void updateJoystickFromEvent(MotionEvent event) {
+        if (joystickPointerId == MotionEvent.INVALID_POINTER_ID) {
+            return;
+        }
+        int pointerIndex = event.findPointerIndex(joystickPointerId);
+        if (pointerIndex < 0) {
+            resetJoystick();
+            return;
+        }
+        updateJoystick(event.getX(pointerIndex), event.getY(pointerIndex));
+    }
+
+    private void handleJoystickRelease(MotionEvent event) {
+        if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+            resetJoystick();
+            return;
+        }
+        int actionIndex = event.getActionIndex();
+        if (event.getPointerId(actionIndex) == joystickPointerId) {
+            resetJoystick();
+        }
+    }
+
+    private boolean isWithinJoystickZone(float touchX, float touchY) {
+        float dx = touchX - joystickCenterX;
+        float dy = touchY - joystickCenterY;
+        float distance = (float) Math.hypot(dx, dy);
+        return distance <= joystickBaseRadius * 2.0f
+                || (touchY >= screenHeight * 0.72f
+                && touchX >= screenWidth * 0.2f
+                && touchX <= screenWidth * 0.8f);
+    }
+
+    private void updateJoystick(float touchX, float touchY) {
+        float dx = touchX - joystickCenterX;
+        float dy = touchY - joystickCenterY;
+        float maxOffset = joystickBaseRadius - joystickKnobRadius * 0.35f;
+        float distance = (float) Math.hypot(dx, dy);
+        if (distance > maxOffset && distance > 0f) {
+            float scale = maxOffset / distance;
+            dx *= scale;
+            dy *= scale;
+        }
+
+        joystickHandleX = joystickCenterX + dx;
+        joystickHandleY = joystickCenterY + dy;
+        joystickInputX = clampAxis(dx / maxOffset);
+        joystickInputY = clampAxis(dy / maxOffset);
+
+        float magnitude = (float) Math.hypot(joystickInputX, joystickInputY);
+        if (magnitude < JOYSTICK_DEAD_ZONE) {
+            joystickInputX = 0f;
+            joystickInputY = 0f;
+            joystickHandleX = joystickCenterX;
+            joystickHandleY = joystickCenterY;
+        }
+    }
+
+    private void applyJoystickMovement(long deltaMs) {
+        if (Math.abs(joystickInputX) < 0.001f && Math.abs(joystickInputY) < 0.001f) {
+            return;
+        }
+        float moveScale = deltaMs / (float) FRAME_DELAY_MS;
+        float moveSpeed = gameConfig.getHeroMoveSpeed() * moveScale;
+        float nextX = gameEngine.getHeroAircraft().getLocationX() + joystickInputX * moveSpeed;
+        float nextY = gameEngine.getHeroAircraft().getLocationY() + joystickInputY * moveSpeed;
+        gameEngine.moveHeroTo(nextX, nextY);
+    }
+
+    private void resetJoystick() {
+        joystickActive = false;
+        joystickPointerId = MotionEvent.INVALID_POINTER_ID;
+        joystickInputX = 0f;
+        joystickInputY = 0f;
+        joystickHandleX = joystickCenterX;
+        joystickHandleY = joystickCenterY;
+    }
+
+    private float clampAxis(float value) {
+        if (value < -1f) {
+            return -1f;
+        }
+        return Math.min(1f, value);
     }
 
     private int resolveHpColor(float ratio) {
