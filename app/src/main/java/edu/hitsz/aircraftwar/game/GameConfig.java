@@ -63,7 +63,7 @@ public class GameConfig {
     }
 
     public int getBossEnemyWidth() {
-        return Math.max(180, Math.round(screenWidth * 0.28f));
+        return Math.max(220, Math.round(screenWidth * 0.34f));
     }
 
     public int getBossEnemyHeight() {
