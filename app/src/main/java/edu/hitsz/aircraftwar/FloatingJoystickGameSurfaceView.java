@@ -23,6 +23,7 @@ import edu.hitsz.aircraftwar.game.GameConfig;
 import edu.hitsz.aircraftwar.game.GameEngine;
 import edu.hitsz.aircraftwar.game.SpriteStore;
 import edu.hitsz.aircraftwar.game.model.AbstractFlyingObject;
+import edu.hitsz.aircraftwar.game.model.HeroAircraft;
 
 public class FloatingJoystickGameSurfaceView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
@@ -43,10 +44,6 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
     private final Paint barTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint barFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint barTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint joystickBasePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint joystickActivePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint joystickKnobPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint joystickStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint overlayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint overlayTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint overlaySubTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -72,14 +69,6 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
 
     private int screenWidth = 1;
     private int screenHeight = 1;
-    private float joystickCenterX;
-    private float joystickCenterY;
-    private float joystickBaseRadius;
-    private float joystickKnobRadius;
-    private float joystickHandleX;
-    private float joystickHandleY;
-    private float joystickInputX;
-    private float joystickInputY;
     private float backgroundOffsetY;
     private long lastFrameTimeMs;
     private long flashStartTimeMs = -1L;
@@ -89,8 +78,10 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
     private boolean gameOverNotified;
     private boolean bgmSynced;
     private boolean bossMusicActive;
-    private boolean joystickActive;
-    private int joystickPointerId = MotionEvent.INVALID_POINTER_ID;
+    private boolean heroDragActive;
+    private int heroDragPointerId = MotionEvent.INVALID_POINTER_ID;
+    private float heroDragOffsetX;
+    private float heroDragOffsetY;
     private long gameOverNotifyAtMs;
 
     private SpriteStore spriteStore;
@@ -142,13 +133,6 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
         barTextPaint.setTextSize(sp(11f));
         barTextPaint.setFakeBoldText(true);
 
-        joystickBasePaint.setColor(0x40324958);
-        joystickActivePaint.setColor(0x6A426C88);
-        joystickKnobPaint.setColor(ContextCompat.getColor(context, R.color.primary));
-        joystickStrokePaint.setColor(strokeColor);
-        joystickStrokePaint.setStyle(Paint.Style.STROKE);
-        joystickStrokePaint.setStrokeWidth(dp(1.4f));
-
         overlayPaint.setColor(0x99101821);
         overlayTextPaint.setColor(textPrimaryColor);
         overlayTextPaint.setTextAlign(Paint.Align.CENTER);
@@ -183,7 +167,7 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
             gameOverNotified = false;
             bgmSynced = false;
             bossMusicActive = false;
-            initJoystick();
+            resetHeroDrag();
         }
         startLoop();
     }
@@ -206,15 +190,15 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                 case MotionEvent.ACTION_POINTER_DOWN:
-                    handleJoystickPress(event);
+                    handleHeroDragStart(event);
                     return true;
                 case MotionEvent.ACTION_MOVE:
-                    updateJoystickFromEvent(event);
+                    updateHeroDragFromEvent(event);
                     return true;
                 case MotionEvent.ACTION_POINTER_UP:
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    handleJoystickRelease(event);
+                    handleHeroDragEnd(event);
                     return true;
                 default:
                     return true;
@@ -235,9 +219,6 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
 
             synchronized (gameStateLock) {
                 if (gameEngine != null) {
-                    if (!gameEngine.isGameOver()) {
-                        applyJoystickMovement(deltaMs);
-                    }
                     gameEngine.update(deltaMs);
                     for (SoundEffect soundEffect : gameEngine.drainSoundEffects()) {
                         handleSoundEffect(soundEffect, now);
@@ -275,7 +256,7 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
 
     public void onHostPause() {
         synchronized (gameStateLock) {
-            resetJoystick();
+            resetHeroDrag();
         }
         stopLoop();
     }
@@ -303,7 +284,7 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
             return;
         }
         gameOverSequenceStarted = true;
-        resetJoystick();
+        resetHeroDrag();
         gameOverNotifyAtMs = now + GAME_OVER_FLASH_DURATION_MS;
         triggerFlash(255, GAME_OVER_FLASH_DURATION_MS, now);
     }
@@ -344,7 +325,6 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
                 drawObjectList(canvas, gameEngine.getEnemyAircrafts());
                 drawObject(canvas, gameEngine.getHeroAircraft());
                 drawHud(canvas);
-                drawJoystick(canvas);
                 if (gameEngine.isGameOver()) {
                     drawGameOverBackdrop(canvas);
                 }
@@ -422,16 +402,6 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
                 gameEngine.getHeroAircraft().getHp() + " / " + gameEngine.getHeroAircraft().getMaxHp());
     }
 
-    private void drawJoystick(Canvas canvas) {
-        if (!joystickActive) {
-            return;
-        }
-        canvas.drawCircle(joystickCenterX, joystickCenterY, joystickBaseRadius, joystickActivePaint);
-        canvas.drawCircle(joystickCenterX, joystickCenterY, joystickBaseRadius, joystickStrokePaint);
-        canvas.drawCircle(joystickHandleX, joystickHandleY, joystickKnobRadius, joystickKnobPaint);
-        canvas.drawCircle(joystickHandleX, joystickHandleY, joystickKnobRadius, joystickStrokePaint);
-    }
-
     private void drawProgressBar(Canvas canvas, RectF rect, int currentValue, int maxValue, String text) {
         canvas.drawRoundRect(rect, dp(12f), dp(12f), barTrackPaint);
         if (maxValue > 0 && currentValue > 0) {
@@ -497,116 +467,79 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
         return rect.centerY() - (paint.ascent() + paint.descent()) * 0.5f;
     }
 
-    private void initJoystick() {
-        joystickBaseRadius = Math.max(dp(54f), Math.min(screenWidth, screenHeight) * 0.11f);
-        joystickKnobRadius = joystickBaseRadius * 0.38f;
-        joystickCenterX = screenWidth * 0.5f;
-        joystickCenterY = screenHeight - joystickBaseRadius - screenHeight * 0.03f;
-        resetJoystick();
-    }
-
-    private void handleJoystickPress(MotionEvent event) {
+    private void handleHeroDragStart(MotionEvent event) {
+        if (gameEngine == null || gameEngine.isGameOver()) {
+            return;
+        }
         int actionIndex = event.getActionIndex();
         float touchX = event.getX(actionIndex);
         float touchY = event.getY(actionIndex);
-        if (joystickActive) {
+        if (heroDragActive) {
             return;
         }
-        float margin = joystickBaseRadius + dp(10f);
-        joystickCenterX = clampValue(touchX, margin, screenWidth - margin);
-        joystickCenterY = clampValue(touchY, margin, screenHeight - margin);
-        joystickActive = true;
-        joystickPointerId = event.getPointerId(actionIndex);
-        updateJoystick(touchX, touchY);
+        if (!isTouchOnHero(touchX, touchY)) {
+            return;
+        }
+        HeroAircraft heroAircraft = gameEngine.getHeroAircraft();
+        if (heroAircraft == null || heroAircraft.notValid()) {
+            return;
+        }
+        heroDragActive = true;
+        heroDragPointerId = event.getPointerId(actionIndex);
+        heroDragOffsetX = heroAircraft.getLocationX() - touchX;
+        heroDragOffsetY = heroAircraft.getLocationY() - touchY;
     }
 
-    private void updateJoystickFromEvent(MotionEvent event) {
-        if (joystickPointerId == MotionEvent.INVALID_POINTER_ID) {
+    private void updateHeroDragFromEvent(MotionEvent event) {
+        if (gameEngine == null) {
+            resetHeroDrag();
             return;
         }
-        int pointerIndex = event.findPointerIndex(joystickPointerId);
+        if (heroDragPointerId == MotionEvent.INVALID_POINTER_ID) {
+            return;
+        }
+        int pointerIndex = event.findPointerIndex(heroDragPointerId);
         if (pointerIndex < 0) {
-            resetJoystick();
+            resetHeroDrag();
             return;
         }
-        updateJoystick(event.getX(pointerIndex), event.getY(pointerIndex));
+        float touchX = event.getX(pointerIndex);
+        float touchY = event.getY(pointerIndex);
+        gameEngine.moveHeroTo(touchX + heroDragOffsetX, touchY + heroDragOffsetY);
     }
 
-    private void handleJoystickRelease(MotionEvent event) {
+    private void handleHeroDragEnd(MotionEvent event) {
         if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-            resetJoystick();
+            resetHeroDrag();
             return;
         }
         int actionIndex = event.getActionIndex();
-        if (event.getPointerId(actionIndex) == joystickPointerId) {
-            resetJoystick();
+        if (event.getPointerId(actionIndex) == heroDragPointerId) {
+            resetHeroDrag();
         }
     }
 
-    private void updateJoystick(float touchX, float touchY) {
-        float dx = touchX - joystickCenterX;
-        float dy = touchY - joystickCenterY;
-        float maxOffset = joystickBaseRadius - joystickKnobRadius * 0.35f;
-        float distance = (float) Math.hypot(dx, dy);
-        if (distance > maxOffset && distance > 0f) {
-            float scale = maxOffset / distance;
-            dx *= scale;
-            dy *= scale;
+    private boolean isTouchOnHero(float touchX, float touchY) {
+        if (gameEngine == null) {
+            return false;
         }
-
-        float normalizedX = clampAxis(dx / maxOffset);
-        float normalizedY = clampAxis(dy / maxOffset);
-        float magnitude = Math.min(1f, (float) Math.hypot(normalizedX, normalizedY));
-        joystickHandleX = joystickCenterX + dx;
-        joystickHandleY = joystickCenterY + dy;
-
-        float deadZone = gameConfig == null ? 0.18f : gameConfig.getJoystickDeadZoneRatio();
-        deadZone = Math.max(0f, Math.min(0.45f, deadZone));
-        if (magnitude <= deadZone) {
-            joystickInputX = 0f;
-            joystickInputY = 0f;
-            return;
+        HeroAircraft heroAircraft = gameEngine.getHeroAircraft();
+        if (heroAircraft == null || heroAircraft.notValid()) {
+            return false;
         }
-
-        float activeMagnitude = (magnitude - deadZone) / (1f - deadZone);
-        float softenedMagnitude = (float) Math.pow(activeMagnitude, 1.45d);
-        float directionScale = softenedMagnitude / magnitude;
-        joystickInputX = normalizedX * directionScale;
-        joystickInputY = normalizedY * directionScale;
+        float halfWidth = heroAircraft.getWidth() * 0.5f;
+        float halfHeight = heroAircraft.getHeight() * 0.5f;
+        return touchX >= heroAircraft.getLocationX() - halfWidth
+                && touchX <= heroAircraft.getLocationX() + halfWidth
+                && touchY >= heroAircraft.getLocationY() - halfHeight
+                && touchY <= heroAircraft.getLocationY() + halfHeight;
     }
 
-    private void applyJoystickMovement(long deltaMs) {
-        if (Math.abs(joystickInputX) < 0.001f && Math.abs(joystickInputY) < 0.001f) {
-            return;
-        }
-        float moveScale = deltaMs / (float) FRAME_DELAY_MS;
-        float moveSpeed = gameConfig.getHeroMoveSpeed() * 0.78f * moveScale;
-        float nextX = gameEngine.getHeroAircraft().getLocationX() + joystickInputX * moveSpeed;
-        float nextY = gameEngine.getHeroAircraft().getLocationY() + joystickInputY * moveSpeed;
-        gameEngine.moveHeroTo(nextX, nextY);
-    }
-
-    private void resetJoystick() {
-        joystickActive = false;
-        joystickPointerId = MotionEvent.INVALID_POINTER_ID;
-        joystickInputX = 0f;
-        joystickInputY = 0f;
-        joystickHandleX = joystickCenterX;
-        joystickHandleY = joystickCenterY;
-    }
-
-    private float clampAxis(float value) {
-        if (value < -1f) {
-            return -1f;
-        }
-        return Math.min(1f, value);
-    }
-
-    private float clampValue(float value, float minValue, float maxValue) {
-        if (value < minValue) {
-            return minValue;
-        }
-        return Math.min(maxValue, value);
+    private void resetHeroDrag() {
+        heroDragActive = false;
+        heroDragPointerId = MotionEvent.INVALID_POINTER_ID;
+        heroDragOffsetX = 0f;
+        heroDragOffsetY = 0f;
     }
 
     private int resolveHpColor(float ratio) {
