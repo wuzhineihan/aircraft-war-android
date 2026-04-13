@@ -68,6 +68,11 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
     private final int healthLowColor;
     private final int surfaceColor;
     private final int strokeColor;
+    private final String hudScoreLabel;
+    private final String hudTimeLabel;
+    private final String hudHpLabel;
+    private final String gameOverOverlayTitle;
+    private final String gameOverOverlaySubtitle;
 
     private Thread renderThread;
     private volatile boolean running;
@@ -118,6 +123,11 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
         this.healthLowColor = ContextCompat.getColor(context, R.color.health_low);
         this.surfaceColor = ContextCompat.getColor(context, R.color.surface);
         this.strokeColor = ContextCompat.getColor(context, R.color.stroke);
+        this.hudScoreLabel = context.getString(R.string.hud_score_label);
+        this.hudTimeLabel = context.getString(R.string.hud_time_label);
+        this.hudHpLabel = context.getString(R.string.hud_hp_label);
+        this.gameOverOverlayTitle = context.getString(R.string.game_over_overlay_title);
+        this.gameOverOverlaySubtitle = context.getString(R.string.game_over_overlay_subtitle);
         surfaceHolder = getHolder();
         surfaceHolder.addCallback(this);
         setFocusable(true);
@@ -398,10 +408,10 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
         primaryRect.set(margin, margin, margin + infoPanelWidth, margin + panelHeight);
         drawPanel(canvas, primaryRect, radius);
         float infoTextX = primaryRect.left + dp(14f);
-        canvas.drawText("得分", infoTextX, primaryRect.top + dp(24f), hudLabelPaint);
+        canvas.drawText(hudScoreLabel, infoTextX, primaryRect.top + dp(24f), hudLabelPaint);
         canvas.drawText(String.valueOf(gameEngine.getScore()), infoTextX, primaryRect.top + dp(54f), hudValuePaint);
         canvas.drawText(
-                "时间 " + UiText.formatDuration(gameEngine.getElapsedMs() / 1000L),
+                hudTimeLabel + " " + UiText.formatDuration(gameEngine.getElapsedMs() / 1000L),
                 infoTextX,
                 primaryRect.top + dp(80f),
                 hudMetaPaint);
@@ -409,7 +419,7 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
         primaryRect.set(screenWidth - margin - hpPanelWidth, margin, screenWidth - margin, margin + panelHeight);
         drawPanel(canvas, primaryRect, radius);
         float hpLabelX = primaryRect.left + dp(14f);
-        canvas.drawText("生命", hpLabelX, primaryRect.top + dp(24f), hudLabelPaint);
+        canvas.drawText(hudHpLabel, hpLabelX, primaryRect.top + dp(24f), hudLabelPaint);
 
         secondaryRect.set(
                 hpLabelX,
@@ -421,7 +431,10 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
                 secondaryRect,
                 gameEngine.getHeroAircraft().getHp(),
                 gameEngine.getHeroAircraft().getMaxHp(),
-                gameEngine.getHeroAircraft().getHp() + " / " + gameEngine.getHeroAircraft().getMaxHp());
+                getResources().getString(
+                        R.string.hud_hp_template,
+                        gameEngine.getHeroAircraft().getHp(),
+                        gameEngine.getHeroAircraft().getMaxHp()));
     }
 
     private void drawJoystick(Canvas canvas) {
@@ -464,14 +477,8 @@ public class GameSurfaceView extends SurfaceView implements SurfaceHolder.Callba
         drawPanel(canvas, primaryRect, dp(28f));
 
         float titleY = top + dp(44f);
-        /*
-        canvas.drawText("作战结束", screenWidth * 0.5f, titleY, overlayTextPaint);
-        canvas.drawText("战报生成中", screenWidth * 0.5f, titleY + dp(30f), overlaySubTextPaint);
-    }
-
-        */
-        canvas.drawText("\u4f5c\u6218\u7ed3\u675f", screenWidth * 0.5f, titleY, overlayTextPaint);
-        canvas.drawText("\u6218\u62a5\u751f\u6210\u4e2d", screenWidth * 0.5f, titleY + dp(30f), overlaySubTextPaint);
+        canvas.drawText(gameOverOverlayTitle, screenWidth * 0.5f, titleY, overlayTextPaint);
+        canvas.drawText(gameOverOverlaySubtitle, screenWidth * 0.5f, titleY + dp(30f), overlaySubTextPaint);
     }
 
     private void drawFlashOverlay(Canvas canvas, long now) {
