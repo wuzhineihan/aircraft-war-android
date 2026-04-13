@@ -478,6 +478,9 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
             return;
         }
         HeroAircraft heroAircraft = gameEngine.getHeroAircraft();
+        if (heroAircraft == null || heroAircraft.notValid()) {
+            return;
+        }
         heroDragActive = true;
         heroDragPointerId = event.getPointerId(actionIndex);
         heroDragOffsetX = heroAircraft.getLocationX() - touchX;
@@ -485,6 +488,10 @@ public class FloatingJoystickGameSurfaceView extends SurfaceView implements Surf
     }
 
     private void updateHeroDragFromEvent(MotionEvent event) {
+        if (gameEngine == null || gameEngine.isGameOver()) {
+            resetHeroDrag();
+            return;
+        }
         if (heroDragPointerId == MotionEvent.INVALID_POINTER_ID) {
             return;
         }
