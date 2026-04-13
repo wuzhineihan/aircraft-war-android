@@ -82,11 +82,7 @@ public class GameActivity extends AppCompatActivity implements FloatingJoystickG
         TextView finalScoreTextView = dialogView.findViewById(R.id.text_final_score);
         TextView finalDurationTextView = dialogView.findViewById(R.id.text_final_duration);
         TextInputEditText input = dialogView.findViewById(R.id.edit_player_name);
-        /*
-
-        finalScoreTextView.setText(score + " 分");
-        */
-        finalScoreTextView.setText(score + " \u5206");
+        finalScoreTextView.setText(getString(R.string.score_item_score, score));
         finalDurationTextView.setText(UiText.formatDuration(durationSeconds));
 
         AlertDialog dialog = new MaterialAlertDialogBuilder(this)
@@ -106,13 +102,8 @@ public class GameActivity extends AppCompatActivity implements FloatingJoystickG
         dialogView.findViewById(R.id.button_save_score).setOnClickListener(view -> {
             CharSequence inputText = input.getText();
             String playerName = inputText == null ? "" : inputText.toString().trim();
-            /*
             if (playerName.isEmpty()) {
-                playerName = "飞行员";
-            }
-            */
-            if (playerName.isEmpty()) {
-                playerName = "\u98de\u884c\u5458";
+                playerName = getString(R.string.default_player_name);
             }
             new ScoreRepository(this).saveScore(playerName, score, durationSeconds, difficulty);
             dialog.dismiss();
