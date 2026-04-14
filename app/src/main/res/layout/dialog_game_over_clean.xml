@@ -52,8 +52,7 @@
                 android:layout_marginTop="5dp"
                 android:textColor="@color/secondary"
                 android:textSize="24sp"
-                android:textStyle="bold"
-                android:text="0 分" />
+                android:textStyle="bold" />
         </LinearLayout>
 
         <LinearLayout
@@ -80,8 +79,7 @@
                 android:layout_marginTop="5dp"
                 android:textColor="@color/text_primary"
                 android:textSize="24sp"
-                android:textStyle="bold"
-                android:text="0s" />
+                android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 
@@ -126,7 +124,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:background="@drawable/ui_button_outline"
-        android:minHeight="50dp"
+        android:minHeight="52dp"
         android:text="@string/skip_save"
         android:textAllCaps="false"
         android:textColor="@color/text_primary"
