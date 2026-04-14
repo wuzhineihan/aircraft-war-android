@@ -152,7 +152,6 @@
         android:id="@+id/button_leaderboard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
         android:background="@drawable/ui_button_outline"
         android:minHeight="54dp"
         android:text="@string/open_leaderboard_label"
@@ -162,7 +161,6 @@
         app:backgroundTint="@android:color/transparent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/mode_panel" />
+        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
