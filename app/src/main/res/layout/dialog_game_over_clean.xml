@@ -99,7 +99,6 @@
             android:id="@+id/edit_player_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/ui_input_box"
             android:maxLines="1"
             android:padding="12dp"
             android:textColor="@color/text_primary"
@@ -116,7 +115,6 @@
         android:text="@string/save_score"
         android:textAllCaps="false"
         android:textColor="@color/on_primary"
-        app:backgroundTint="@android:color/transparent" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_skip_save"
@@ -128,6 +126,5 @@
         android:text="@string/skip_save"
         android:textAllCaps="false"
         android:textColor="@color/text_primary"
-        app:backgroundTint="@android:color/transparent" />
 
 </LinearLayout>

@@ -26,7 +26,6 @@
             android:text="@string/back_to_menu_label"
             android:textAllCaps="false"
             android:textColor="@color/text_primary"
-            app:backgroundTint="@android:color/transparent" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_clear_scores"
@@ -39,7 +38,6 @@
             android:text="@string/clear_scores_label"
             android:textAllCaps="false"
             android:textColor="@color/text_primary"
-            app:backgroundTint="@android:color/transparent" />
     </LinearLayout>
 
     <LinearLayout
