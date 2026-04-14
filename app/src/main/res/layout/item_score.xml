@@ -5,30 +5,30 @@
     android:id="@+id/card_score"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
-    android:background="@drawable/bg_glass_panel"
     app:cardBackgroundColor="@android:color/transparent"
+    app:cardCornerRadius="0dp"
     app:cardElevation="0dp"
-    app:strokeColor="@android:color/transparent"
+    app:strokeColor="@color/stroke"
     app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:background="@drawable/ui_card_score"
+        android:orientation="horizontal"
+        android:padding="12dp">
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_width="62dp"
+            android:layout_height="match_parent"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/text_rank"
-                android:layout_width="56dp"
-                android:layout_height="36dp"
-                android:background="@drawable/bg_rank_badge"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:background="@drawable/ui_rank_tag"
                 android:gravity="center"
                 android:textColor="@color/on_primary"
                 android:textSize="14sp"
@@ -39,69 +39,75 @@
                 android:id="@+id/text_mode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:background="@drawable/bg_meta_chip"
-                android:paddingStart="10dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="10dp"
-                android:paddingBottom="4dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/ui_data_box"
+                android:paddingStart="8dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="3dp"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 tools:text="普通" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/text_player_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                tools:text="飞行员" />
 
             <TextView
                 android:id="@+id/text_created_at"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:layout_weight="1"
-                android:gravity="end"
+                android:layout_marginTop="3dp"
                 android:textColor="@color/text_muted"
                 android:textSize="12sp"
                 tools:text="记录时间 2026-04-08 13:20" />
-        </LinearLayout>
 
-        <TextView
-            android:id="@+id/text_player_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:textColor="@color/text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            tools:text="飞行员" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/text_score"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="@color/secondary"
-                android:textSize="30sp"
-                android:textStyle="bold"
-                tools:text="2880 分" />
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/text_duration"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_chip"
-                android:paddingStart="10dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="10dp"
-                android:paddingBottom="4dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                tools:text="180s 生存" />
+                <TextView
+                    android:id="@+id/text_score"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/secondary"
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    tools:text="2880 分" />
+
+                <TextView
+                    android:id="@+id/text_duration"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/ui_data_box"
+                    android:paddingStart="9dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="9dp"
+                    android:paddingBottom="3dp"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="180s 生存" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
+
 </com.google.android.material.card.MaterialCardView>
